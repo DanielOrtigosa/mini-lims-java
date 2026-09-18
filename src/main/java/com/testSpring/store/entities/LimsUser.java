@@ -16,6 +16,8 @@ public class LimsUser {
     private String department;
     private String location;
     private boolean active;
+    private String email;
+    private String password;
 
     public int getID() {
         return ID;
@@ -57,6 +59,17 @@ public class LimsUser {
     }
     public void setActive(boolean active) {
         this.active = active;
+    }
+
+    public String getEmail() {return email;}
+    public void setEmail(String email) {this.email = email;}
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
     }
 
     @Override

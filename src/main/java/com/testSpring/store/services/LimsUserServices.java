@@ -2,7 +2,6 @@ package com.testSpring.store.services;
 
 import com.testSpring.store.entities.LimsUser;
 import com.testSpring.store.repositories.LimsUserRepository;
-import org.apache.catalina.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -16,17 +15,59 @@ public class LimsUserServices {
     private LimsUserRepository limsUserRepository;
 
     public List<LimsUser> getAllLimsUsers(){
-        List<LimsUser> users = (List<LimsUser>) this.limsUserRepository.findAll();
-        return users;
+        return (List<LimsUser>) this.limsUserRepository.findAll();
     }
 
-    public List<LimsUser> getLimsUsers(int id){
-        List<LimsUser> optional = (List<LimsUser>) this.limsUserRepository.findAll();
+    public Optional<LimsUser> getLimsUser(int id){
+        Optional<LimsUser> optional = this.limsUserRepository.findById(id);
+
         if (optional.isEmpty()){
             return null;
         }
         return optional;
     }
 
+    public Optional<LimsUser> getLimsUserByName (String name){
+        return Optional.ofNullable(this.limsUserRepository.findLimsUserByName(name));
+    }
+
+    public void updateUser (LimsUser user, int id){
+        user.setID(id);
+        this.limsUserRepository.save(user);
+    }
+
+    public void deleteUser(int id){
+
+        Optional<LimsUser> user = this.limsUserRepository.findById(id);
+        if (user.isPresent()) {
+            user.get().setActive(false);
+            this.limsUserRepository.save(user.get());
+        }
+    }
+
+    public void activateUser(int id){
+        Optional<LimsUser> user = this.limsUserRepository.findById(id);
+        if (user.isPresent()){
+            user.get().setActive(true);
+            this.limsUserRepository.save(user.get());
+        }
+    }
+
+    public void addUser(LimsUser user){
+        this.limsUserRepository.save(user);
+    }
+
+    public boolean validateLoginCredentials(String email,String password)
+    {
+        List<LimsUser> users = (List<LimsUser>) this.limsUserRepository.findAll();
+        for(LimsUser u:users)
+        {
+            if(u!=null && u.getPassword().equals(password) && u.getEmail().equals(email))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
 
 }
