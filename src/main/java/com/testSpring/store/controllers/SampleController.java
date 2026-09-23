@@ -4,10 +4,7 @@ import com.testSpring.store.entities.Sample;
 import com.testSpring.store.services.SampleServices;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.*;
 
 @Controller
 public class SampleController {
@@ -25,7 +22,7 @@ public class SampleController {
         this.services.updateSample(sample, id);
         return "redirect:/admin/services";
     }
-    @GetMapping("/deleteSample/{id}")
+    @DeleteMapping("/deleteSample/{id}")
     public String deleteSample(@PathVariable("id") int id) {
         this.services.deleteSample(id);
         return "redirect:/admin/services";
