@@ -19,11 +19,7 @@ public class ResultServices {
     }
 
     public Optional<Result> getResult(int id) {
-        Optional<Result> optional = this.resultRepository.findById(id);
-        if (optional.isEmpty()) {
-            return null;
-        }
-        return optional;
+        return this.resultRepository.findById(id);
     }
 
     public void addResult(Result result) {
@@ -31,6 +27,7 @@ public class ResultServices {
     }
 
     public void updateResult(Result result, int id) {
+        if (!resultRepository.existsById(id)) throw new IllegalArgumentException("No existe el resultado " + id);
         result.setId(id);
         this.resultRepository.save(result);
     }

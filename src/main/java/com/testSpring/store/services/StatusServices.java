@@ -16,14 +16,14 @@ public class StatusServices {
 
     public List<Status> getAllStatuses() { return (List<Status>) this.statusRepository.findAll(); }
     public Optional<Status> getStatus(int id) {
-        Optional<Status> optional = this.statusRepository.findById(id);
-        return optional.isEmpty() ? null : optional;
+        return this.statusRepository.findById(id);
     }
     public Optional<Status> getStatusByCode(String code) {
         return Optional.ofNullable(this.statusRepository.findStatusByCode(code));
     }
     public void addStatus(Status status) { this.statusRepository.save(status); }
     public void updateStatus(Status status, int id) {
+        if (!statusRepository.existsById(id)) throw new IllegalArgumentException("No existe el estado " + id);
         status.setId(id);
         this.statusRepository.save(status);
     }

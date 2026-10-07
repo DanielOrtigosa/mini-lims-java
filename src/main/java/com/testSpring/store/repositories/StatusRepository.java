@@ -5,4 +5,5 @@ import org.springframework.data.repository.CrudRepository;
 
 public interface StatusRepository extends CrudRepository<Status, Integer> {
     Status findStatusByCode(String code);
+    Status findFirstByCodeIgnoreCase(String code);
 }

@@ -27,4 +27,6 @@ public class StatusController {
         this.services.deleteStatus(id);
         return "redirect:/admin/services";
     }
+
+
 }

@@ -1,0 +1,64 @@
+{
+  "info": {
+    "name": "Mini LIMS - Samples API",
+    "description": "Manual requests for the sample REST endpoints (steps 6 and 7). Set baseUrl and sampleId in the collection variables.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "sampleId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "List samples",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/samples" }
+    },
+    {
+      "name": "Get sample",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/samples/{{sampleId}}" }
+    },
+    {
+      "name": "Create sample",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"sampleCode\": \"S-1001\",\n  \"type\": \"water\",\n  \"description\": \"Manual Postman sample\",\n  \"dateReception\": \"2026-09-25\",\n  \"active\": true\n}"
+        },
+        "url": "{{baseUrl}}/api/samples"
+      }
+    },
+    {
+      "name": "Update sample",
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"sampleCode\": \"S-1001\",\n  \"type\": \"water\",\n  \"description\": \"Updated sample description\",\n  \"dateReception\": \"2026-09-25\",\n  \"active\": true\n}"
+        },
+        "url": "{{baseUrl}}/api/samples/{{sampleId}}"
+      }
+    },
+    {
+      "name": "Deactivate sample",
+      "request": { "method": "DELETE", "url": "{{baseUrl}}/api/samples/{{sampleId}}" }
+    },
+    {
+      "name": "Advance sample status",
+      "request": {
+        "method": "POST",
+        "description": "Call once for PENDING to IN_ANALYSIS, then again for IN_ANALYSIS to COMPLETED.",
+        "url": "{{baseUrl}}/api/samples/{{sampleId}}/status/advance"
+      }
+    },
+    {
+      "name": "Get sample status history",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/samples/{{sampleId}}/status/history"
+      }
+    }
+  ]
+}

@@ -4,6 +4,7 @@ import com.testSpring.store.entities.LimsUser;
 import com.testSpring.store.repositories.LimsUserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
 import java.util.Optional;
@@ -13,6 +14,9 @@ public class LimsUserServices {
 
     @Autowired
     private LimsUserRepository limsUserRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     public List<LimsUser> getAllLimsUsers(){
         return (List<LimsUser>) this.limsUserRepository.findAll();
@@ -54,6 +58,7 @@ public class LimsUserServices {
     }
 
     public void addUser(LimsUser user){
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
         this.limsUserRepository.save(user);
     }
 
@@ -62,7 +67,7 @@ public class LimsUserServices {
         List<LimsUser> users = (List<LimsUser>) this.limsUserRepository.findAll();
         for(LimsUser u:users)
         {
-            if(u!=null && u.getPassword().equals(password) && u.getEmail().equals(email))
+            if(u!=null && passwordEncoder.matches(password, u.getPassword()) && u.getEmail().equals(email))
             {
                 return true;
             }

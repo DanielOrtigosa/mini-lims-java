@@ -11,7 +11,6 @@ Sistema de gestión de muestras de laboratorio (LIMS), inspirado en la experienc
 
 *Pendiente:*
 - Endpoints REST (controladores).
-- Seguridad (Spring Security + JWT, roles técnico/admin).
 - Tests (JUnit).
 - Despliegue con Docker.
 
@@ -42,6 +41,23 @@ Se ha elegido Oracle como motor de base de datos por ser el mismo ecosistema usa
 3. Ejecutar con:
 
    ./mvnw spring-boot:run
+
+## Autenticación JWT (API de estados)
+
+La API de estados (`/api/statuses/**`) requiere un token JWT. Inicia sesión con un usuario activo mediante:
+
+```http
+POST /api/auth/login
+Content-Type: application/json
+```
+
+```json
+{"email":"admin@example.com","password":"tu-contraseña"}
+```
+
+La respuesta contiene `accessToken`. Envíalo en las siguientes peticiones como `Authorization: Bearer <accessToken>`. Las lecturas requieren autenticación; crear, actualizar y borrar estados requiere el rol `ADMIN`.
+
+Las contraseñas nuevas guardadas a través de `LimsUserServices.addUser` se cifran con BCrypt. Define `JWT_SECRET` como una clave Base64 de al menos 32 bytes antes de desplegar la aplicación; el valor predeterminado de `application.properties` sirve solo para desarrollo local.
 
 
 ## Contexto
