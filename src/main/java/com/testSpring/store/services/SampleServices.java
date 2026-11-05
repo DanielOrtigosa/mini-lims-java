@@ -6,6 +6,7 @@ import com.testSpring.store.entities.Status;
 import com.testSpring.store.repositories.SampleRepository;
 import com.testSpring.store.repositories.SampleStatusHistoryRepository;
 import com.testSpring.store.repositories.StatusRepository;
+import com.testSpring.store.repositories.LimsUserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +28,9 @@ public class SampleServices {
     @Autowired
     private SampleStatusHistoryRepository historyRepository;
 
+    @Autowired
+    private LimsUserRepository limsUserRepository;
+
     public List<Sample> getAllSamples() { return (List<Sample>) this.sampleRepository.findAll(); }
     public Optional<Sample> getSample(int id) {
         return this.sampleRepository.findById(id);
@@ -37,6 +41,7 @@ public class SampleServices {
     @Transactional
     public void addSample(Sample sample) {
         if (sample.getDateCreation() == null) sample.setDateCreation(LocalDate.now());
+        sample.setTechnician(null);
         Status pending = getOrCreateWorkflowStatus("PENDING", "Pendiente");
         sample.setStatus(pending);
         sample.setState(pending.getName());
@@ -102,9 +107,27 @@ public class SampleServices {
         // El estado solo debe cambiar a través del flujo explícito.
         sample.setStatus(current.getStatus());
         sample.setState(current.getState());
+        sample.setTechnician(current.getTechnician());
         if (sample.getDateCreation() == null) sample.setDateCreation(current.getDateCreation());
         sample.setDateModified(LocalDate.now());
         this.sampleRepository.save(sample);
+    }
+
+    @Transactional
+    public Sample assignTechnician(int sampleId, int technicianId) {
+        Sample sample = sampleRepository.findById(sampleId)
+                .orElseThrow(() -> new IllegalArgumentException("No existe la muestra " + sampleId));
+        com.testSpring.store.entities.LimsUser technician = limsUserRepository.findById(technicianId)
+                .orElseThrow(() -> new IllegalArgumentException("No existe el técnico " + technicianId));
+        String role = technician.getRole() == null ? "" : technician.getRole().trim().toUpperCase();
+        if (role.startsWith("ROLE_")) role = role.substring("ROLE_".length());
+        if (!technician.isActive()) throw new IllegalStateException("El técnico está inactivo");
+        if (!role.equals("TECHNICIAN") && !role.equals("TECNICO")) {
+            throw new IllegalStateException("El usuario indicado no tiene rol de técnico");
+        }
+        sample.setTechnician(technician);
+        sample.setDateModified(LocalDate.now());
+        return sampleRepository.save(sample);
     }
     public void deleteSample(int id) {
         this.sampleRepository.findById(id).ifPresent(sample -> {

@@ -6,9 +6,41 @@
   },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:8080" },
-    { "key": "sampleId", "value": "1" }
+    { "key": "sampleId", "value": "1" },
+    { "key": "technicianId", "value": "1" },
+    { "key": "accessToken", "value": "" },
+    { "key": "adminEmail", "value": "admin@example.com" },
+    { "key": "adminPassword", "value": "" }
   ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
   "item": [
+    {
+      "name": "Login as configured administrator",
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "if (pm.response.code === 200) {",
+            "  pm.collectionVariables.set('accessToken', pm.response.json().accessToken);",
+            "}"
+          ]
+        }
+      }],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+        },
+        "url": "{{baseUrl}}/api/auth/login"
+      }
+    },
     {
       "name": "List samples",
       "request": { "method": "GET", "url": "{{baseUrl}}/api/samples" }
@@ -19,6 +51,17 @@
     },
     {
       "name": "Create sample",
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "if (pm.response.code === 201) {",
+            "  pm.collectionVariables.set('sampleId', pm.response.json().id);",
+            "}"
+          ]
+        }
+      }],
       "request": {
         "method": "POST",
         "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -51,6 +94,13 @@
         "method": "POST",
         "description": "Call once for PENDING to IN_ANALYSIS, then again for IN_ANALYSIS to COMPLETED.",
         "url": "{{baseUrl}}/api/samples/{{sampleId}}/status/advance"
+      }
+    },
+    {
+      "name": "Assign technician to sample",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/api/samples/{{sampleId}}/technician/{{technicianId}}"
       }
     },
     {

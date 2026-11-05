@@ -23,12 +23,7 @@ public class LimsUserServices {
     }
 
     public Optional<LimsUser> getLimsUser(int id){
-        Optional<LimsUser> optional = this.limsUserRepository.findById(id);
-
-        if (optional.isEmpty()){
-            return null;
-        }
-        return optional;
+        return this.limsUserRepository.findById(id);
     }
 
     public Optional<LimsUser> getLimsUserByName (String name){
@@ -36,7 +31,14 @@ public class LimsUserServices {
     }
 
     public void updateUser (LimsUser user, int id){
+        LimsUser current = limsUserRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("No existe el usuario " + id));
         user.setID(id);
+        if (user.getPassword() == null || user.getPassword().isBlank()) {
+            user.setPassword(current.getPassword());
+        } else {
+            user.setPassword(passwordEncoder.encode(user.getPassword()));
+        }
         this.limsUserRepository.save(user);
     }
 
@@ -58,21 +60,19 @@ public class LimsUserServices {
     }
 
     public void addUser(LimsUser user){
+        if (user.getPassword() == null || user.getPassword().isBlank()) {
+            throw new IllegalArgumentException("La contraseña es obligatoria");
+        }
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         this.limsUserRepository.save(user);
     }
 
     public boolean validateLoginCredentials(String email,String password)
     {
-        List<LimsUser> users = (List<LimsUser>) this.limsUserRepository.findAll();
-        for(LimsUser u:users)
-        {
-            if(u!=null && passwordEncoder.matches(password, u.getPassword()) && u.getEmail().equals(email))
-            {
-                return true;
-            }
-        }
-        return false;
+        if (email == null || email.isBlank() || password == null) return false;
+        LimsUser user = limsUserRepository.findLimsUserByEmail(email);
+        return user != null && user.getPassword() != null
+                && passwordEncoder.matches(password, user.getPassword());
     }
 
 }

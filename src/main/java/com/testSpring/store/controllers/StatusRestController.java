@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/statuses")
@@ -33,6 +34,7 @@ public class StatusRestController {
 
     @GetMapping("/{id}")
     public ResponseEntity<Status> getStatus(@PathVariable int id) {
+        if (id <= 0) return ResponseEntity.badRequest().build();
         Optional<Status> status = statusServices.getStatus(id);
         return status.isEmpty()
                 ? ResponseEntity.notFound().build()
@@ -40,13 +42,18 @@ public class StatusRestController {
     }
 
     @PostMapping
-    public ResponseEntity<Status> addStatus(@RequestBody Status status) {
+    public ResponseEntity<?> addStatus(@RequestBody(required = false) Status status) {
+        String validationError = validateStatus(status);
+        if (validationError != null) return ResponseEntity.badRequest().body(Map.of("error", validationError));
         statusServices.addStatus(status);
         return ResponseEntity.status(HttpStatus.CREATED).body(status);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Void> updateStatus(@PathVariable int id, @RequestBody Status status) {
+    public ResponseEntity<?> updateStatus(@PathVariable int id, @RequestBody(required = false) Status status) {
+        if (id <= 0) return ResponseEntity.badRequest().body(Map.of("error", "El id debe ser mayor que cero"));
+        String validationError = validateStatus(status);
+        if (validationError != null) return ResponseEntity.badRequest().body(Map.of("error", validationError));
         if (statusServices.getStatus(id).isEmpty()) return ResponseEntity.notFound().build();
         statusServices.updateStatus(status, id);
         return ResponseEntity.noContent().build();
@@ -54,9 +61,21 @@ public class StatusRestController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteStatus(@PathVariable int id) {
+        if (id <= 0) return ResponseEntity.badRequest().build();
         Optional<Status> status = statusServices.getStatus(id);
         if (status.isEmpty()) return ResponseEntity.notFound().build();
-        statusServices.deleteStatus(id);
-        return ResponseEntity.noContent().build();
+        try {
+            statusServices.deleteStatus(id);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        }
+    }
+
+    private String validateStatus(Status status) {
+        if (status == null) return "El cuerpo del estado es obligatorio";
+        if (status.getName() == null || status.getName().isBlank()) return "El nombre del estado es obligatorio";
+        if (status.getCode() == null || status.getCode().isBlank()) return "El código del estado es obligatorio";
+        return null;
     }
 }

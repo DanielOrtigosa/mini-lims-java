@@ -4,6 +4,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 public class LimsUser {
@@ -64,6 +65,7 @@ public class LimsUser {
     public String getEmail() {return email;}
     public void setEmail(String email) {this.email = email;}
 
+    @JsonIgnore
     public String getPassword() {
         return password;
     }

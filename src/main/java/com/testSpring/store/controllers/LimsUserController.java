@@ -6,7 +6,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Optional;
 
 @Controller
 public class LimsUserController {
@@ -23,16 +22,14 @@ public class LimsUserController {
 
     @GetMapping("/updatingUser/{id}")
     public String updateUser(@ModelAttribute LimsUser user, @PathVariable("id") int id){
+        if (services.getLimsUser(id).isEmpty()) return "redirect:/admin/services";
         this.services.updateUser(user,id);
         return "redirect:/admin/services";
     }
 
     @DeleteMapping("/deleteUser/{id}")
     public String deleteUser(@PathVariable("id")int id){
-        Optional<LimsUser> user = this.services.getLimsUser(id);
-        user.get().setActive(false);
-
-        this.services.updateUser(user.get(), id);
+        this.services.deleteUser(id);
 
         return "redirect:/admin/services";
     }

@@ -4,6 +4,7 @@ import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import com.testSpring.store.entities.LimsUser;
 import com.testSpring.store.repositories.LimsUserRepository;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpMethod;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -14,14 +15,14 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
-import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
@@ -35,6 +36,29 @@ import java.util.Base64;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfiguration {
+
+    private static final String[] PROTECTED_PATHS = {
+            "/api/**",
+            "/admin/**",
+            "/addUser", "/updatingUser/**", "/deleteUser/**",
+            "/addStatus", "/updatingStatus/**", "/deleteStatus/**",
+            "/addSample", "/updatingSample/**", "/deleteSample/**", "/activateSample/**",
+            "/addResult", "/updatingResult/**", "/deleteResult/**"
+    };
+
+    private static final String[] ADMIN_ONLY_PATHS = {
+            "/admin/**",
+            "/addUser", "/updatingUser/**", "/deleteUser/**",
+            "/addStatus", "/updatingStatus/**", "/deleteStatus/**"
+    };
+
+    private static final String[] TECHNICIAN_PATHS = {
+            "/addSample", "/updatingSample/**", "/deleteSample/**", "/activateSample/**",
+            "/addResult", "/updatingResult/**", "/deleteResult/**"
+    };
+
+    private static final String STATUS_API_PATH = "/api/statuses/**";
+    private static final String[] OPERATIONAL_ROLES = {"ADMIN", "TECHNICIAN", "TECNICO"};
 
     @Bean
     UserDetailsService userDetailsService(LimsUserRepository users) {
@@ -96,24 +120,35 @@ public class SecurityConfiguration {
     }
 
     @Bean
-    @Order(1)
-    SecurityFilterChain apiSecurity(HttpSecurity http) throws Exception {
+    JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtGrantedAuthoritiesConverter authoritiesConverter = new JwtGrantedAuthoritiesConverter();
         authoritiesConverter.setAuthoritiesClaimName("roles");
         authoritiesConverter.setAuthorityPrefix("");
-        JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
-        jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(authoritiesConverter);
 
+        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+        converter.setJwtGrantedAuthoritiesConverter(authoritiesConverter);
+        return converter;
+    }
+
+    @Bean
+    @Order(1)
+    SecurityFilterChain apiSecurity(HttpSecurity http, JwtAuthenticationConverter jwtAuthenticationConverter)
+            throws Exception {
         http
-                .securityMatcher("/api/statuses/**", "/api/auth/**")
+                .securityMatcher(PROTECTED_PATHS)
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/api/auth/login").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/statuses/**").hasRole("ADMIN")
-                        .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/statuses/**").hasRole("ADMIN")
-                        .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/statuses/**").hasRole("ADMIN")
-                        .anyRequest().authenticated())
+                .authorizeHttpRequests(authorize -> {
+                    authorize.requestMatchers("/api/auth/login").permitAll();
+                    authorize.requestMatchers(ADMIN_ONLY_PATHS).hasRole("ADMIN");
+
+                    authorize.requestMatchers(HttpMethod.POST, STATUS_API_PATH).hasRole("ADMIN");
+                    authorize.requestMatchers(HttpMethod.PUT, STATUS_API_PATH).hasRole("ADMIN");
+                    authorize.requestMatchers(HttpMethod.DELETE, STATUS_API_PATH).hasRole("ADMIN");
+
+                    authorize.requestMatchers(TECHNICIAN_PATHS).hasAnyRole(OPERATIONAL_ROLES);
+                    authorize.anyRequest().hasAnyRole(OPERATIONAL_ROLES);
+                })
                 .oauth2ResourceServer(resourceServer -> resourceServer.jwt(jwt ->
                         jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)));
         return http.build();

@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: mini-lims
+    runtime: docker
+    plan: free
+    region: frankfurt
+    healthCheckPath: /health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: render
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase:
+          name: mini-lims-db
+          property: user
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase:
+          name: mini-lims-db
+          property: password
+      - key: DB_HOST
+        fromDatabase:
+          name: mini-lims-db
+          property: host
+      - key: DB_NAME
+        fromDatabase:
+          name: mini-lims-db
+          property: database
+      - key: JWT_SECRET
+        generateValue: true
+      - key: BOOTSTRAP_ADMIN_EMAIL
+        sync: false
+      - key: BOOTSTRAP_ADMIN_PASSWORD
+        sync: false
+
+databases:
+  - name: mini-lims-db
+    databaseName: mini_lims
+    user: mini_lims
+    plan: free
+    region: frankfurt

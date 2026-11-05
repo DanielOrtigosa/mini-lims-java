@@ -31,6 +31,10 @@ public class Sample {
     @JoinColumn(name = "STATUS_ID")
     private Status status;
 
+    @ManyToOne
+    @JoinColumn(name = "TECHNICIAN_ID")
+    private LimsUser technician;
+
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }
     public String getSampleCode() { return sampleCode; }
@@ -53,4 +57,6 @@ public class Sample {
     public void setActive(boolean active) { this.active = active; }
     public Status getStatus() { return status; }
     public void setStatus(Status status) { this.status = status; }
+    public LimsUser getTechnician() { return technician; }
+    public void setTechnician(LimsUser technician) { this.technician = technician; }
 }

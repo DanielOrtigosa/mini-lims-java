@@ -2,6 +2,7 @@ package com.testSpring.store.services;
 
 import com.testSpring.store.entities.Status;
 import com.testSpring.store.repositories.StatusRepository;
+import com.testSpring.store.repositories.SampleRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -13,6 +14,9 @@ public class StatusServices {
 
     @Autowired
     private StatusRepository statusRepository;
+
+    @Autowired
+    private SampleRepository sampleRepository;
 
     public List<Status> getAllStatuses() { return (List<Status>) this.statusRepository.findAll(); }
     public Optional<Status> getStatus(int id) {
@@ -27,5 +31,10 @@ public class StatusServices {
         status.setId(id);
         this.statusRepository.save(status);
     }
-    public void deleteStatus(int id) { this.statusRepository.deleteById(id); }
+    public void deleteStatus(int id) {
+        if (sampleRepository.existsByStatus_Id(id)) {
+            throw new IllegalStateException("No se puede borrar un estado que está asignado a muestras");
+        }
+        this.statusRepository.deleteById(id);
+    }
 }
