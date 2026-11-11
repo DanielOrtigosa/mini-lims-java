@@ -47,11 +47,15 @@ class LimsUserServicesTest {
         LimsUser changed = new LimsUser();
         changed.setPassword("new-password");
         service.updateUser(changed, 5);
-        assertEquals("new-hash", changed.getPassword());
+        assertEquals("new-hash", existing.getPassword());
+        existing.setEmail("preserved@example.com");
+        existing.setActive(true);
 
         LimsUser withoutPassword = new LimsUser();
         service.updateUser(withoutPassword, 5);
-        assertEquals("existing-hash", withoutPassword.getPassword());
+        assertEquals("new-hash", existing.getPassword());
+        assertEquals("preserved@example.com", existing.getEmail());
+        assertEquals(true, existing.isActive());
         verify(repository, times(2)).save(any(LimsUser.class));
     }
 

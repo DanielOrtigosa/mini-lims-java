@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @Service
 public class ResultServices {
@@ -22,6 +24,7 @@ public class ResultServices {
     public List<Result> getAllResults() {
         return (List<Result>) this.resultRepository.findAll();
     }
+    public Page<Result> getAllResults(Pageable pageable) { return resultRepository.findAll(pageable); }
 
     public Optional<Result> getResult(int id) {
         return this.resultRepository.findById(id);

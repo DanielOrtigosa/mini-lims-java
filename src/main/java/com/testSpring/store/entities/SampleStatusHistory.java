@@ -34,14 +34,23 @@ public class SampleStatusHistory {
     @Column(name = "CHANGED_AT", nullable = false)
     private LocalDateTime changedAt;
 
+    @Column(name = "CHANGED_BY")
+    private String changedBy;
+
     protected SampleStatusHistory() { }
 
     public SampleStatusHistory(Sample sample, String previousStatusCode, String newStatusCode,
                                LocalDateTime changedAt) {
+        this(sample, previousStatusCode, newStatusCode, changedAt, null);
+    }
+
+    public SampleStatusHistory(Sample sample, String previousStatusCode, String newStatusCode,
+                               LocalDateTime changedAt, String changedBy) {
         this.sample = sample;
         this.previousStatusCode = previousStatusCode;
         this.newStatusCode = newStatusCode;
         this.changedAt = changedAt;
+        this.changedBy = changedBy;
     }
 
     public Integer getId() { return id; }
@@ -49,4 +58,5 @@ public class SampleStatusHistory {
     public String getPreviousStatusCode() { return previousStatusCode; }
     public String getNewStatusCode() { return newStatusCode; }
     public LocalDateTime getChangedAt() { return changedAt; }
+    public String getChangedBy() { return changedBy; }
 }

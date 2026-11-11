@@ -15,6 +15,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @Service
 public class SampleServices {
@@ -32,6 +34,7 @@ public class SampleServices {
     private LimsUserRepository limsUserRepository;
 
     public List<Sample> getAllSamples() { return (List<Sample>) this.sampleRepository.findAll(); }
+    public Page<Sample> getAllSamples(Pageable pageable) { return sampleRepository.findAll(pageable); }
     public Optional<Sample> getSample(int id) {
         return this.sampleRepository.findById(id);
     }
@@ -40,17 +43,32 @@ public class SampleServices {
     }
     @Transactional
     public void addSample(Sample sample) {
+        addSample(sample, null);
+    }
+
+    @Transactional
+    public void addSample(Sample sample, String creatorEmail) {
         if (sample.getDateCreation() == null) sample.setDateCreation(LocalDate.now());
+        if (creatorEmail != null) {
+            sample.setCreatedBy(limsUserRepository.findByEmail(creatorEmail).map(user -> user.getID()).orElse(null));
+        }
+        else sample.setCreatedBy(null);
+        sample.setActive(true);
         sample.setTechnician(null);
         Status pending = getOrCreateWorkflowStatus("PENDING", "Pendiente");
         sample.setStatus(pending);
         sample.setState(pending.getName());
         Sample savedSample = sampleRepository.save(sample);
-        historyRepository.save(new SampleStatusHistory(savedSample, null, "PENDING", LocalDateTime.now()));
+        historyRepository.save(new SampleStatusHistory(savedSample, null, "PENDING", LocalDateTime.now(), creatorEmail));
     }
 
     @Transactional
     public Sample advanceSampleStatus(int id) {
+        return advanceSampleStatus(id, null);
+    }
+
+    @Transactional
+    public Sample advanceSampleStatus(int id, String changedBy) {
         Sample sample = sampleRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("No existe la muestra " + id));
         if (sample.getStatus() == null || sample.getStatus().getCode() == null) {
@@ -80,7 +98,7 @@ public class SampleServices {
         sample.setState(nextStatus.getName());
         sample.setDateModified(LocalDate.now());
         Sample savedSample = sampleRepository.save(sample);
-        historyRepository.save(new SampleStatusHistory(savedSample, currentCode, nextCode, LocalDateTime.now()));
+        historyRepository.save(new SampleStatusHistory(savedSample, currentCode, nextCode, LocalDateTime.now(), changedBy));
         return savedSample;
     }
 
@@ -103,14 +121,15 @@ public class SampleServices {
     public void updateSample(Sample sample, int id) {
         Sample current = sampleRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("No existe la muestra " + id));
-        sample.setId(id);
-        // El estado solo debe cambiar a través del flujo explícito.
-        sample.setStatus(current.getStatus());
-        sample.setState(current.getState());
-        sample.setTechnician(current.getTechnician());
-        if (sample.getDateCreation() == null) sample.setDateCreation(current.getDateCreation());
-        sample.setDateModified(LocalDate.now());
-        this.sampleRepository.save(sample);
+        if (sample.getVersion() != null && !sample.getVersion().equals(current.getVersion())) {
+            throw new org.springframework.orm.ObjectOptimisticLockingFailureException(Sample.class, id);
+        }
+        if (sample.getSampleCode() != null) current.setSampleCode(sample.getSampleCode());
+        if (sample.getType() != null) current.setType(sample.getType());
+        if (sample.getDescription() != null) current.setDescription(sample.getDescription());
+        // Preserve lifecycle, reception and ownership fields during ordinary updates.
+        current.setDateModified(LocalDate.now());
+        this.sampleRepository.save(current);
     }
 
     @Transactional

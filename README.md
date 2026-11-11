@@ -1,5 +1,11 @@
 # Mini LIMS
 
+Mini LIMS is a Spring Boot REST API for laboratory sample tracking. It provides JWT authentication with role-based access, sample status history, technician assignment, results, and administrator-managed users. The project runs locally with H2 and includes Docker and Render deployment configuration backed by PostgreSQL. Start it with Java 21 and `./mvnw spring-boot:run`; configure `JWT_SECRET` and the bootstrap administrator credentials first.
+
+[![CI](https://github.com/DanielOrtigosa/mini-lims-java/actions/workflows/ci.yml/badge.svg)](https://github.com/DanielOrtigosa/mini-lims-java/actions/workflows/ci.yml)
+
+**Live demo:** [mini-lims.onrender.com](https://mini-lims.onrender.com/health) (the free service may take up to a minute to wake up).
+
 Aplicación web de gestión de muestras de laboratorio desarrollada con Java y Spring Boot. El proyecto sigue un recorrido práctico desde la creación del modelo de datos y las operaciones CRUD hasta la trazabilidad de estados, la autenticación por roles, las pruebas y el despliegue con Docker.
 
 Está inspirada en un flujo de trabajo LIMS y en la experiencia de prácticas en el área LIMS de Kymos. Es un proyecto personal de aprendizaje; no es un producto oficial de Kymos ni de LabWare.
@@ -67,6 +73,7 @@ Al arrancar, la aplicación crea un usuario administrador si no existe otro con 
 ```powershell
 $env:BOOTSTRAP_ADMIN_EMAIL = "admin@example.com"
 $env:BOOTSTRAP_ADMIN_PASSWORD = "<contraseña-segura>"
+$env:JWT_SECRET = "<clave-base64-de-al-menos-32-bytes>"
 .\mvnw.cmd spring-boot:run
 ```
 
@@ -76,7 +83,7 @@ Para usar una clave JWT propia, configura también `JWT_SECRET` con una cadena B
 $env:JWT_SECRET = "<clave-base64-de-al-menos-32-bytes>"
 ```
 
-La clave predeterminada de la configuración es solo para desarrollo. No guardes credenciales ni claves reales en el repositorio.
+Configura `JWT_SECRET` con una cadena Base64 que represente al menos 32 bytes (puedes generarla con `openssl rand -base64 32`). La aplicación no arranca sin ella. No guardes credenciales ni claves reales en el repositorio. La clave aislada de `src/test/resources/application.properties` solo se usa al ejecutar pruebas.
 
 ## API
 
@@ -144,6 +151,9 @@ Hay pruebas para los servicios de muestras, resultados, estados y usuarios, prue
 
 ## Despliegue
 
+Antes de desplegar una versión con este esquema, respalda y vacía la base de datos de demostración: las columnas `version` y `changedBy` son nuevas, y los valores duplicados de `sampleCode` o `email` impiden crear las restricciones de unicidad.
+
+
 El repositorio incluye un `Dockerfile` y [`render.yaml`](render.yaml) para desplegar en Render con PostgreSQL. Conecta el repositorio en Render y crea un Blueprint a partir de ese archivo. Configura un email y una contraseña nuevos para el administrador inicial.
 
 Render genera `JWT_SECRET` y proporciona al servicio las credenciales de la base de datos. Tras el despliegue, comprueba `https://<tu-servicio>.onrender.com/health` y utiliza `POST /api/auth/login` para obtener un token.
@@ -155,3 +165,10 @@ El Blueprint usa planes gratuitos para facilitar una demo. El servicio puede tar
 El desarrollo se organizó en etapas: configuración de Spring Boot y conexión a la base de datos; entidades, repositorios y servicios; API REST y pruebas manuales; flujo de estados y trazabilidad; autenticación JWT y permisos por rol; validaciones y pruebas automatizadas; y empaquetado y despliegue. La guía también propone revisiones iterativas y un pulido general del repositorio como parte del proceso.
 
 El proyecto continúa evolucionando y sirve como práctica de Java, SQL y Spring Boot.
+
+
+## Gestión de usuarios y páginas
+
+Los usuarios se administran en `/api/users`, solo con rol `ADMIN`. `GET /api/users?page=0&size=20` lista usuarios; `POST /api/users` crea un usuario con `name`, `email`, `role`, `password` y, opcionalmente, `department` y `location`; `PUT /api/users/{id}` actualiza el perfil; `PATCH /api/users/{id}/activation` con `{"active": false}` desactiva la cuenta y con `{"active": true}` la reactiva. Desactivar conserva el registro y las asignaciones. Los JWT emitidos antes de la desactivación siguen válidos hasta caducar (una hora).
+
+Los listados de muestras, resultados y estados también aceptan `page` y `size`, por ejemplo `GET /api/samples?page=0&size=5`. Las respuestas de muestras, resultados y usuarios usan DTOs y no incluyen contraseñas ni entidades relacionadas completas.

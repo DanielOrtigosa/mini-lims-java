@@ -55,11 +55,11 @@ public class AuthRestController {
             return ResponseEntity.ok(new LoginResponse(token, "Bearer", 3600));
         } catch (AuthenticationException exception) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new ErrorResponse("Email o contraseña incorrectos"));
+                    .body(new ApiExceptionHandler.ApiError(HttpStatus.UNAUTHORIZED.value(),
+                            "Email o contraseña incorrectos"));
         }
     }
 
     public record LoginRequest(String email, String password) {}
     public record LoginResponse(String accessToken, String tokenType, long expiresIn) {}
-    public record ErrorResponse(String error) {}
 }

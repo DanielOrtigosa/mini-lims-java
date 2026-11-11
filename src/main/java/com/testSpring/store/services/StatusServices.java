@@ -8,6 +8,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @Service
 public class StatusServices {
@@ -19,6 +21,7 @@ public class StatusServices {
     private SampleRepository sampleRepository;
 
     public List<Status> getAllStatuses() { return (List<Status>) this.statusRepository.findAll(); }
+    public Page<Status> getAllStatuses(Pageable pageable) { return statusRepository.findAll(pageable); }
     public Optional<Status> getStatus(int id) {
         return this.statusRepository.findById(id);
     }

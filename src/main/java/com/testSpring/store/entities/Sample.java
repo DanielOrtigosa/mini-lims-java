@@ -7,6 +7,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
+import jakarta.persistence.Column;
 
 import java.time.LocalDate;
 
@@ -17,6 +19,7 @@ public class Sample {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
+    @Column(unique = true, nullable = false)
     private String sampleCode;
     private String type;
     private String description;
@@ -26,6 +29,9 @@ public class Sample {
     private LocalDate dateCreation;
     private LocalDate dateModified;
     private boolean active = true;
+
+    @Version
+    private Long version;
 
     @ManyToOne
     @JoinColumn(name = "STATUS_ID")
@@ -55,6 +61,8 @@ public class Sample {
     public void setDateModified(LocalDate dateModified) { this.dateModified = dateModified; }
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
     public Status getStatus() { return status; }
     public void setStatus(Status status) { this.status = status; }
     public LimsUser getTechnician() { return technician; }

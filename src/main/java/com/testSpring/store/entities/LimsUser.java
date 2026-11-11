@@ -5,6 +5,9 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.Column;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 
 @Entity
 public class LimsUser {
@@ -17,6 +20,9 @@ public class LimsUser {
     private String department;
     private String location;
     private boolean active;
+    @Column(unique = true, nullable = false)
+    @Email
+    @NotBlank
     private String email;
     private String password;
 

@@ -8,6 +8,7 @@ import com.testSpring.store.repositories.SampleRepository;
 import com.testSpring.store.services.SampleServices;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
@@ -32,6 +33,24 @@ class SecurityConfigurationTests {
     @Autowired private SampleServices sampleServices;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private ObjectMapper objectMapper;
+
+    @Test
+    void missingJwtSecretFailsFast() {
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> new SecurityConfiguration().jwtSecretKey(""));
+    }
+
+    @Test
+    void h2ConsoleServletFollowsEnabledProperty() {
+        new ApplicationContextRunner()
+                .withUserConfiguration(H2ConsoleConfiguration.class)
+                .withPropertyValues("spring.h2.console.enabled=false")
+                .run(context -> org.junit.jupiter.api.Assertions.assertFalse(context.containsBean("h2ConsoleServlet")));
+        new ApplicationContextRunner()
+                .withUserConfiguration(H2ConsoleConfiguration.class)
+                .withPropertyValues("spring.h2.console.enabled=true")
+                .run(context -> org.junit.jupiter.api.Assertions.assertTrue(context.containsBean("h2ConsoleServlet")));
+    }
 
     @Test
     void apiRequiresAuthentication() throws Exception {
@@ -67,13 +86,17 @@ class SecurityConfigurationTests {
                         .with(jwt().authorities(() -> "ROLE_TECHNICIAN"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").isNotEmpty());
 
         mockMvc.perform(post("/api/results")
                         .with(jwt().authorities(() -> "ROLE_TECHNICIAN"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"sample\":{\"id\":0},\"resultValue\":\"ok\",\"resultDate\":\"2026-10-13\"}"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").isNotEmpty());
 
         mockMvc.perform(post("/api/statuses")
                         .with(jwt().authorities(() -> "ROLE_ADMIN"))
@@ -193,5 +216,113 @@ class SecurityConfigurationTests {
         } finally {
             users.delete(user);
         }
+    }
+
+    @Test
+    void administratorManagesUsersAndInactiveUsersCannotLogInOrBeAssigned() throws Exception {
+        String email = "managed-" + java.util.UUID.randomUUID() + "@example.com";
+        String request = "{\"name\":\"Managed technician\",\"email\":\"" + email
+                + "\",\"role\":\"TECHNICIAN\",\"department\":\"Lab\",\"location\":\"A\",\"password\":\"safe-password\"}";
+
+        mockMvc.perform(post("/api/users").with(jwt().authorities(() -> "ROLE_TECHNICIAN"))
+                        .contentType(MediaType.APPLICATION_JSON).content(request))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/users").contentType(MediaType.APPLICATION_JSON).content(request))
+                .andExpect(status().isUnauthorized());
+
+        String response = mockMvc.perform(post("/api/users").with(jwt().authorities(() -> "ROLE_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON).content(request))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.password").doesNotExist())
+                .andExpect(jsonPath("$.active").value(true))
+                .andReturn().getResponse().getContentAsString();
+        int technicianId = objectMapper.readTree(response).get("id").asInt();
+        mockMvc.perform(post("/api/users").with(jwt().authorities(() -> "ROLE_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON).content(request))
+                .andExpect(status().isConflict());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/api/users/{id}", technicianId)
+                        .with(jwt().authorities(() -> "ROLE_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Renamed technician\",\"email\":\"changed@example.com\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value(email))
+                .andExpect(jsonPath("$.active").value(true));
+
+        Sample sample = new Sample();
+        sample.setSampleCode("MANAGED-" + java.util.UUID.randomUUID());
+        sample.setType("water");
+        sample = samples.save(sample);
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .patch("/api/samples/{id}/technician/{technicianId}", sample.getId(), technicianId)
+                        .with(jwt().authorities(() -> "ROLE_TECHNICIAN")))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .patch("/api/users/{id}/activation", technicianId)
+                        .with(jwt().authorities(() -> "ROLE_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"active\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(false));
+
+        mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"password\":\"safe-password\"}"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .patch("/api/samples/{id}/technician/{technicianId}", sample.getId(), technicianId)
+                        .with(jwt().authorities(() -> "ROLE_TECHNICIAN")))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void sampleCreatorAndStatusHistoryActorComeFromAuthenticatedJwtSubject() throws Exception {
+        String email = "audit-" + java.util.UUID.randomUUID() + "@example.com";
+        LimsUser user = new LimsUser();
+        user.setName("Audit technician");
+        user.setEmail(email);
+        user.setRole("TECHNICIAN");
+        user.setActive(true);
+        user.setPassword(passwordEncoder.encode("audit-password"));
+        user = users.save(user);
+
+        String login = mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"password\":\"audit-password\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String token = objectMapper.readTree(login).get("accessToken").asText();
+        String created = mockMvc.perform(post("/api/samples").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"sampleCode\":\"AUDIT-" + java.util.UUID.randomUUID()
+                                + "\",\"type\":\"water\",\"createdBy\":999999}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.createdBy").value(user.getID()))
+                .andReturn().getResponse().getContentAsString();
+        int sampleId = objectMapper.readTree(created).get("id").asInt();
+
+        mockMvc.perform(post("/api/samples/{id}/status/advance", sampleId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/samples/{id}/status/history", sampleId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[1].changedBy").value(email));
+        users.delete(user);
+    }
+
+    @Test
+    void sampleCodesAreUniqueAndSampleListsArePaginated() throws Exception {
+        String code = "UNIQUE-" + java.util.UUID.randomUUID();
+        String body = "{\"sampleCode\":\"" + code + "\",\"type\":\"water\"}";
+        mockMvc.perform(post("/api/samples").with(jwt().authorities(() -> "ROLE_TECHNICIAN"))
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated());
+        mockMvc.perform(post("/api/samples").with(jwt().authorities(() -> "ROLE_TECHNICIAN"))
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isConflict());
+        mockMvc.perform(get("/api/samples?page=0&size=5")
+                        .with(jwt().authorities(() -> "ROLE_TECHNICIAN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.size").value(5));
     }
 }

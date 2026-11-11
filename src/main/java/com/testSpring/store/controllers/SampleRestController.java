@@ -1,7 +1,15 @@
 package com.testSpring.store.controllers;
 
 import com.testSpring.store.entities.Sample;
+import com.testSpring.store.dto.SampleRequest;
+import com.testSpring.store.dto.SampleResponse;
+import com.testSpring.store.dto.ActivationRequest;
 import com.testSpring.store.services.SampleServices;
+import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -13,12 +21,11 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
-import java.util.Optional;
-import java.util.Map;
 
-/** REST endpoints for working with samples independently of the form-based controllers. */
+/** REST endpoints for the sample workflow. */
 @RestController
 @RequestMapping("/api/samples")
 public class SampleRestController {
@@ -30,98 +37,84 @@ public class SampleRestController {
     }
 
     @GetMapping
-    public List<Sample> getAllSamples() {
-        return sampleServices.getAllSamples();
+    public Page<SampleResponse> getAllSamples(Pageable pageable) {
+        return sampleServices.getAllSamples(pageable).map(SampleResponse::from);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Sample> getSample(@PathVariable int id) {
-        if (id <= 0) return ResponseEntity.badRequest().build();
-        Optional<Sample> sample = sampleServices.getSample(id);
-        return sample.isEmpty()
-                ? ResponseEntity.notFound().build()
-                : ResponseEntity.ok(sample.get());
+    public ResponseEntity<SampleResponse> getSample(@PathVariable int id) {
+        if (id <= 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El id debe ser mayor que cero");
+        Sample sample = sampleServices.getSample(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No existe la muestra " + id));
+        return ResponseEntity.ok(SampleResponse.from(sample));
     }
 
     @PostMapping
-    public ResponseEntity<?> addSample(@RequestBody(required = false) Sample sample) {
-        String validationError = validateSample(sample);
-        if (validationError != null) {
-            return ResponseEntity.badRequest().body(Map.of("error", validationError));
-        }
-        sampleServices.addSample(sample);
-        return ResponseEntity.status(HttpStatus.CREATED).body(sample);
+    public ResponseEntity<SampleResponse> addSample(@Valid @RequestBody SampleRequest request,
+                                                    @AuthenticationPrincipal Jwt jwt) {
+        Sample sample = new Sample();
+        sample.setSampleCode(request.sampleCode());
+        sample.setType(request.type());
+        sample.setDescription(request.description());
+        sample.setDateReception(request.dateReception());
+        sampleServices.addSample(sample, jwt == null ? null : jwt.getSubject());
+        return ResponseEntity.status(HttpStatus.CREATED).body(SampleResponse.from(sample));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateSample(@PathVariable int id, @RequestBody(required = false) Sample sample) {
-        if (id <= 0) return ResponseEntity.badRequest().body(Map.of("error", "El id debe ser mayor que cero"));
-        String validationError = validateSample(sample);
-        if (validationError != null) {
-            return ResponseEntity.badRequest().body(Map.of("error", validationError));
-        }
-        if (sampleServices.getSample(id).isEmpty()) return ResponseEntity.notFound().build();
+    public ResponseEntity<Void> updateSample(@PathVariable int id, @Valid @RequestBody SampleRequest request) {
+        if (id <= 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El id debe ser mayor que cero");
+        Sample sample = new Sample();
+        sample.setSampleCode(request.sampleCode());
+        sample.setType(request.type());
+        sample.setDescription(request.description());
+        sample.setVersion(request.version());
         sampleServices.updateSample(sample, id);
         return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/{id}/technician/{technicianId}")
     public ResponseEntity<?> assignTechnician(@PathVariable int id, @PathVariable int technicianId) {
-        if (id <= 0 || technicianId <= 0) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Los ids deben ser mayores que cero"));
-        }
-        try {
-            return ResponseEntity.ok(sampleServices.assignTechnician(id, technicianId));
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.notFound().build();
-        } catch (IllegalStateException ex) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", ex.getMessage()));
-        }
+        if (id <= 0 || technicianId <= 0)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Los ids deben ser mayores que cero");
+        return ResponseEntity.ok(SampleResponse.from(sampleServices.assignTechnician(id, technicianId)));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deactivateSample(@PathVariable int id) {
-        if (id <= 0) return ResponseEntity.badRequest().build();
-        Optional<Sample> sample = sampleServices.getSample(id);
-        if (sample.isEmpty()) return ResponseEntity.notFound().build();
+        if (id <= 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El id debe ser mayor que cero");
+        if (sampleServices.getSample(id).isEmpty())
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No existe la muestra " + id);
         sampleServices.deleteSample(id);
         return ResponseEntity.noContent().build();
     }
 
+    @PatchMapping("/{id}/activation")
+    public ResponseEntity<SampleResponse> setActivation(@PathVariable int id,
+                                                        @Valid @RequestBody ActivationRequest request) {
+        if (id <= 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El id debe ser mayor que cero");
+        if (sampleServices.getSample(id).isEmpty())
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No existe la muestra " + id);
+        if (request.active()) sampleServices.activateSample(id);
+        else sampleServices.deleteSample(id);
+        return ResponseEntity.ok(sampleServices.getSample(id).map(SampleResponse::from).orElseThrow());
+    }
+
     @PostMapping("/{id}/status/advance")
-    public ResponseEntity<?> advanceSampleStatus(@PathVariable int id) {
-        if (id <= 0) return ResponseEntity.badRequest().body(Map.of("error", "El id debe ser mayor que cero"));
-        try {
-            return ResponseEntity.ok(sampleServices.advanceSampleStatus(id));
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.notFound().build();
-        } catch (IllegalStateException ex) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", ex.getMessage()));
-        }
+    public ResponseEntity<?> advanceSampleStatus(@PathVariable int id, @AuthenticationPrincipal Jwt jwt) {
+        if (id <= 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El id debe ser mayor que cero");
+        return ResponseEntity.ok(SampleResponse.from(sampleServices.advanceSampleStatus(id,
+                jwt == null ? null : jwt.getSubject())));
     }
 
     @GetMapping("/{id}/status/history")
     public ResponseEntity<?> getSampleStatusHistory(@PathVariable int id) {
-        if (id <= 0) return ResponseEntity.badRequest().body(Map.of("error", "El id debe ser mayor que cero"));
-        try {
-            List<SampleStatusHistoryResponse> history = sampleServices.getSampleStatusHistory(id).stream()
-                    .map(entry -> new SampleStatusHistoryResponse(
-                            entry.getPreviousStatusCode(), entry.getNewStatusCode(), entry.getChangedAt()))
-                    .toList();
-            return ResponseEntity.ok(history);
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.notFound().build();
-        }
+        if (id <= 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El id debe ser mayor que cero");
+        List<SampleStatusHistoryResponse> history = sampleServices.getSampleStatusHistory(id).stream()
+                .map(entry -> new SampleStatusHistoryResponse(
+                        entry.getPreviousStatusCode(), entry.getNewStatusCode(), entry.getChangedAt(), entry.getChangedBy()))
+                .toList();
+        return ResponseEntity.ok(history);
     }
 
-    private String validateSample(Sample sample) {
-        if (sample == null) return "El cuerpo de la muestra es obligatorio";
-        if (sample.getSampleCode() == null || sample.getSampleCode().isBlank()) {
-            return "El código de la muestra es obligatorio";
-        }
-        if (sample.getType() == null || sample.getType().isBlank()) {
-            return "El tipo de muestra es obligatorio";
-        }
-        return null;
-    }
 }

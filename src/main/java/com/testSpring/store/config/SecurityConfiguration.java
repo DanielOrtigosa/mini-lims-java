@@ -38,23 +38,7 @@ import java.util.Base64;
 public class SecurityConfiguration {
 
     private static final String[] PROTECTED_PATHS = {
-            "/api/**",
-            "/admin/**",
-            "/addUser", "/updatingUser/**", "/deleteUser/**",
-            "/addStatus", "/updatingStatus/**", "/deleteStatus/**",
-            "/addSample", "/updatingSample/**", "/deleteSample/**", "/activateSample/**",
-            "/addResult", "/updatingResult/**", "/deleteResult/**"
-    };
-
-    private static final String[] ADMIN_ONLY_PATHS = {
-            "/admin/**",
-            "/addUser", "/updatingUser/**", "/deleteUser/**",
-            "/addStatus", "/updatingStatus/**", "/deleteStatus/**"
-    };
-
-    private static final String[] TECHNICIAN_PATHS = {
-            "/addSample", "/updatingSample/**", "/deleteSample/**", "/activateSample/**",
-            "/addResult", "/updatingResult/**", "/deleteResult/**"
+            "/api/**"
     };
 
     private static final String STATUS_API_PATH = "/api/statuses/**";
@@ -101,7 +85,10 @@ public class SecurityConfiguration {
     }
 
     @Bean
-    SecretKey jwtSecretKey(@Value("${app.jwt.secret}") String base64Secret) {
+    SecretKey jwtSecretKey(@Value("${app.jwt.secret:}") String base64Secret) {
+        if (base64Secret == null || base64Secret.isBlank()) {
+            throw new IllegalArgumentException("JWT_SECRET debe configurarse con una clave Base64 de al menos 32 bytes");
+        }
         byte[] key = Base64.getDecoder().decode(base64Secret);
         if (key.length < 32) {
             throw new IllegalArgumentException("app.jwt.secret debe contener al menos 32 bytes (256 bits)");
@@ -140,13 +127,10 @@ public class SecurityConfiguration {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> {
                     authorize.requestMatchers("/api/auth/login").permitAll();
-                    authorize.requestMatchers(ADMIN_ONLY_PATHS).hasRole("ADMIN");
-
+                    authorize.requestMatchers("/api/users/**").hasRole("ADMIN");
                     authorize.requestMatchers(HttpMethod.POST, STATUS_API_PATH).hasRole("ADMIN");
                     authorize.requestMatchers(HttpMethod.PUT, STATUS_API_PATH).hasRole("ADMIN");
                     authorize.requestMatchers(HttpMethod.DELETE, STATUS_API_PATH).hasRole("ADMIN");
-
-                    authorize.requestMatchers(TECHNICIAN_PATHS).hasAnyRole(OPERATIONAL_ROLES);
                     authorize.anyRequest().hasAnyRole(OPERATIONAL_ROLES);
                 })
                 .oauth2ResourceServer(resourceServer -> resourceServer.jwt(jwt ->

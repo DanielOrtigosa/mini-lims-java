@@ -47,6 +47,36 @@ class SampleServicesTest {
     }
 
     @Test
+    void updatingSamplePreservesActivationOwnershipReceptionAndWorkflow() {
+        Sample existing = new Sample();
+        existing.setSampleCode("S-keep");
+        existing.setType("water");
+        existing.setActive(false);
+        existing.setCreatedBy(42);
+        existing.setDateReception(LocalDate.of(2026, 1, 2));
+        existing.setStatus(status(1, "PENDING", "Pendiente"));
+        existing.setState("Pendiente");
+        when(samples.findById(7)).thenReturn(Optional.of(existing));
+
+        Sample changes = new Sample();
+        changes.setSampleCode("S-updated");
+        changes.setType("blood");
+        changes.setActive(true);
+        changes.setCreatedBy(999);
+        changes.setDateReception(LocalDate.of(2030, 1, 1));
+        changes.setState("COMPLETED");
+        service.updateSample(changes, 7);
+
+        assertEquals("S-updated", existing.getSampleCode());
+        assertFalse(existing.isActive());
+        assertEquals(42, existing.getCreatedBy());
+        assertEquals(LocalDate.of(2026, 1, 2), existing.getDateReception());
+        assertEquals("PENDING", existing.getStatus().getCode());
+        assertEquals("Pendiente", existing.getState());
+        verify(samples).save(existing);
+    }
+
+    @Test
     void statusCanAdvanceTwiceAndCannotAdvanceAfterCompletion() {
         Sample sample = new Sample();
         sample.setStatus(status(1, "PENDING", "Pendiente"));

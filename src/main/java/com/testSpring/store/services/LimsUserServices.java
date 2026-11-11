@@ -8,6 +8,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @Service
 public class LimsUserServices {
@@ -22,6 +24,14 @@ public class LimsUserServices {
         return (List<LimsUser>) this.limsUserRepository.findAll();
     }
 
+    public Page<LimsUser> getAllLimsUsers(Pageable pageable) {
+        return limsUserRepository.findAll(pageable);
+    }
+
+    public Optional<LimsUser> getLimsUserByEmail(String email) {
+        return limsUserRepository.findByEmail(email);
+    }
+
     public Optional<LimsUser> getLimsUser(int id){
         return this.limsUserRepository.findById(id);
     }
@@ -33,13 +43,15 @@ public class LimsUserServices {
     public void updateUser (LimsUser user, int id){
         LimsUser current = limsUserRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("No existe el usuario " + id));
-        user.setID(id);
-        if (user.getPassword() == null || user.getPassword().isBlank()) {
-            user.setPassword(current.getPassword());
-        } else {
-            user.setPassword(passwordEncoder.encode(user.getPassword()));
+        if (user.getName() != null) current.setName(user.getName());
+        // Email and activation are identity/security fields and are managed separately.
+        if (user.getDepartment() != null) current.setDepartment(user.getDepartment());
+        if (user.getLocation() != null) current.setLocation(user.getLocation());
+        if (user.getRole() != null) current.setRole(user.getRole());
+        if (user.getPassword() != null && !user.getPassword().isBlank()) {
+            current.setPassword(passwordEncoder.encode(user.getPassword()));
         }
-        this.limsUserRepository.save(user);
+        this.limsUserRepository.save(current);
     }
 
     public void deleteUser(int id){
@@ -64,6 +76,7 @@ public class LimsUserServices {
             throw new IllegalArgumentException("La contraseña es obligatoria");
         }
         user.setPassword(passwordEncoder.encode(user.getPassword()));
+        user.setActive(true);
         this.limsUserRepository.save(user);
     }
 

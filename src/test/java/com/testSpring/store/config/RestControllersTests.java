@@ -57,6 +57,65 @@ class RestControllersTests {
                         .with(jwt().authorities(() -> "ROLE_TECHNICIAN")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.active").value(false));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .patch("/api/samples/{id}/activation", id)
+                        .with(jwt().authorities(() -> "ROLE_TECHNICIAN"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"active\":true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(true));
+    }
+
+    @Test
+    void sampleUpdateIgnoresClientActivationOwnerAndLifecycleFields() throws Exception {
+        Sample sample = new Sample();
+        sample.setSampleCode("SAFE-" + java.util.UUID.randomUUID());
+        sample.setType("water");
+        sample.setState("IN_ANALYSIS");
+        sample.setCreatedBy(41);
+        sample.setDateReception(java.time.LocalDate.of(2026, 3, 4));
+        sample.setActive(false);
+        sample = samples.save(sample);
+        int id = sample.getId();
+
+        mockMvc.perform(put("/api/samples/{id}", id)
+                        .with(jwt().authorities(() -> "ROLE_TECHNICIAN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"sampleCode\":\"SAFE-UPDATED\",\"type\":\"blood\",\"state\":\"COMPLETED\","
+                                + "\"createdBy\":999,\"dateReception\":\"2030-01-01\",\"active\":true}"))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/samples/{id}", id)
+                        .with(jwt().authorities(() -> "ROLE_TECHNICIAN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.active").value(false))
+                .andExpect(jsonPath("$.createdBy").value(41))
+                .andExpect(jsonPath("$.state").value("IN_ANALYSIS"))
+                .andExpect(jsonPath("$.dateReception").value("2026-03-04"));
+    }
+
+    @Test
+    void staleSampleVersionReturnsConflict() throws Exception {
+        String code = "VERSION-" + java.util.UUID.randomUUID();
+        String created = mockMvc.perform(post("/api/samples")
+                        .with(jwt().authorities(() -> "ROLE_TECHNICIAN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"sampleCode\":\"" + code + "\",\"type\":\"water\"}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        var createdJson = objectMapper.readTree(created);
+        int id = createdJson.get("id").asInt();
+        long version = createdJson.get("version").asLong();
+        String update = "{\"sampleCode\":\"" + code + "\",\"type\":\"blood\",\"version\":" + version + "}";
+
+        mockMvc.perform(put("/api/samples/{id}", id)
+                        .with(jwt().authorities(() -> "ROLE_TECHNICIAN"))
+                        .contentType(MediaType.APPLICATION_JSON).content(update))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(put("/api/samples/{id}", id)
+                        .with(jwt().authorities(() -> "ROLE_TECHNICIAN"))
+                        .contentType(MediaType.APPLICATION_JSON).content(update))
+                .andExpect(status().isConflict());
     }
 
     @Test

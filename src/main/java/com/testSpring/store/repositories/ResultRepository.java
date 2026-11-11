@@ -1,7 +1,7 @@
 package com.testSpring.store.repositories;
 
 import com.testSpring.store.entities.Result;
-import org.springframework.data.repository.CrudRepository;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface ResultRepository extends CrudRepository<Result, Integer> {
+public interface ResultRepository extends JpaRepository<Result, Integer> {
 }
