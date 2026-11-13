@@ -28,6 +28,7 @@ import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import tools.jackson.databind.ObjectMapper;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -117,12 +118,16 @@ public class SecurityConfiguration {
 
     @Bean
     @Order(1)
-    SecurityFilterChain apiSecurity(HttpSecurity http, JwtAuthenticationConverter jwtAuthenticationConverter)
+    SecurityFilterChain apiSecurity(HttpSecurity http, JwtAuthenticationConverter jwtAuthenticationConverter,
+                                    ApiSecurityErrorHandler apiSecurityErrorHandler)
             throws Exception {
         http
                 .securityMatcher(PROTECTED_PATHS)
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint(apiSecurityErrorHandler)
+                        .accessDeniedHandler(apiSecurityErrorHandler))
                 .authorizeHttpRequests(authorize -> {
                     authorize.requestMatchers("/api/auth/login").permitAll();
                     authorize.requestMatchers("/api/users/**").hasRole("ADMIN");
@@ -131,9 +136,16 @@ public class SecurityConfiguration {
                     authorize.requestMatchers(HttpMethod.DELETE, STATUS_API_PATH).hasRole("ADMIN");
                     authorize.anyRequest().hasAnyRole(OPERATIONAL_ROLES);
                 })
-                .oauth2ResourceServer(resourceServer -> resourceServer.jwt(jwt ->
-                        jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)));
+                .oauth2ResourceServer(resourceServer -> resourceServer
+                        .authenticationEntryPoint(apiSecurityErrorHandler)
+                        .accessDeniedHandler(apiSecurityErrorHandler)
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)));
         return http.build();
+    }
+
+    @Bean
+    ApiSecurityErrorHandler apiSecurityErrorHandler(ObjectMapper objectMapper) {
+        return new ApiSecurityErrorHandler(objectMapper);
     }
 
     @Bean

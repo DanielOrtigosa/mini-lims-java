@@ -58,7 +58,9 @@ class SecurityConfigurationTests {
     @Test
     void apiRequiresAuthentication() throws Exception {
         mockMvc.perform(get("/api/samples"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.error").isNotEmpty());
     }
 
     @Test
@@ -229,9 +231,13 @@ class SecurityConfigurationTests {
 
         mockMvc.perform(post("/api/users").with(jwt().authorities(() -> "ROLE_TECHNICIAN"))
                         .contentType(MediaType.APPLICATION_JSON).content(request))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status").value(403))
+                .andExpect(jsonPath("$.error").isNotEmpty());
         mockMvc.perform(post("/api/users").contentType(MediaType.APPLICATION_JSON).content(request))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.error").isNotEmpty());
 
         String response = mockMvc.perform(post("/api/users").with(jwt().authorities(() -> "ROLE_ADMIN"))
                         .contentType(MediaType.APPLICATION_JSON).content(request))
