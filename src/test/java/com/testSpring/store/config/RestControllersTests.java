@@ -6,6 +6,7 @@ import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -16,6 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
+@ActiveProfiles("test")
 @AutoConfigureMockMvc
 class RestControllersTests {
 
@@ -33,6 +35,7 @@ class RestControllersTests {
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         int id = objectMapper.readTree(created).get("id").asInt();
+        long version = objectMapper.readTree(created).get("version").asLong();
 
         mockMvc.perform(get("/api/samples/{id}", id)
                         .with(jwt().authorities(() -> "ROLE_TECHNICIAN")))
@@ -42,7 +45,7 @@ class RestControllersTests {
         mockMvc.perform(put("/api/samples/{id}", id)
                         .with(jwt().authorities(() -> "ROLE_TECHNICIAN"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"sampleCode\":\"" + sampleCode + "\",\"type\":\"blood\"}"))
+                        .content("{\"sampleCode\":\"" + sampleCode + "\",\"type\":\"blood\",\"version\":" + version + "}"))
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(get("/api/samples/{id}", id)
@@ -82,7 +85,8 @@ class RestControllersTests {
                         .with(jwt().authorities(() -> "ROLE_TECHNICIAN"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"sampleCode\":\"SAFE-UPDATED\",\"type\":\"blood\",\"state\":\"COMPLETED\","
-                                + "\"createdBy\":999,\"dateReception\":\"2030-01-01\",\"active\":true}"))
+                                + "\"createdBy\":999,\"dateReception\":\"2030-01-01\",\"active\":true,\"version\":"
+                                + sample.getVersion() + "}"))
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(get("/api/samples/{id}", id)
@@ -107,6 +111,13 @@ class RestControllersTests {
         int id = createdJson.get("id").asInt();
         long version = createdJson.get("version").asLong();
         String update = "{\"sampleCode\":\"" + code + "\",\"type\":\"blood\",\"version\":" + version + "}";
+
+        mockMvc.perform(put("/api/samples/{id}", id)
+                        .with(jwt().authorities(() -> "ROLE_TECHNICIAN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"sampleCode\":\"" + code + "\",\"type\":\"blood\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
 
         mockMvc.perform(put("/api/samples/{id}", id)
                         .with(jwt().authorities(() -> "ROLE_TECHNICIAN"))

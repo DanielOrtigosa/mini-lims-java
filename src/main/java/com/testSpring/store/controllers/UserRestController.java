@@ -5,7 +5,9 @@ import com.testSpring.store.dto.UserRequest;
 import com.testSpring.store.dto.UserResponse;
 import com.testSpring.store.dto.UserUpdateRequest;
 import com.testSpring.store.entities.LimsUser;
+import com.testSpring.store.entities.Role;
 import com.testSpring.store.services.LimsUserServices;
+import com.testSpring.store.exceptions.ResourceNotFoundException;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -41,7 +43,6 @@ public class UserRestController {
     public UserResponse update(@PathVariable int id, @Valid @RequestBody UserUpdateRequest request) {
         LimsUser changes = new LimsUser();
         changes.setName(request.name());
-        changes.setEmail(request.email());
         changes.setRole(request.role() == null ? null : normalizeRole(request.role()));
         changes.setDepartment(request.department());
         changes.setLocation(request.location());
@@ -53,17 +54,16 @@ public class UserRestController {
     @PatchMapping("/{id}/activation")
     public UserResponse setActivation(@PathVariable int id, @Valid @RequestBody ActivationRequest request) {
         if (request.active()) users.activateUser(id);
-        else users.deleteUser(id);
+        else users.deactivateUser(id);
         return users.getLimsUser(id).map(UserResponse::from)
-                .orElseThrow(() -> new IllegalArgumentException("No existe el usuario " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("No existe el usuario " + id));
     }
 
-    private String normalizeRole(String role) {
-        String normalized = role.trim().toUpperCase();
-        if (normalized.startsWith("ROLE_")) normalized = normalized.substring(5);
-        if (!normalized.equals("ADMIN") && !normalized.equals("TECHNICIAN") && !normalized.equals("TECNICO")) {
-            throw new IllegalArgumentException("El rol debe ser ADMIN o TECHNICIAN");
+    private Role normalizeRole(String role) {
+        try {
+            return Role.from(role);
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("El rol debe ser ADMIN o TECHNICIAN", ex);
         }
-        return normalized;
     }
 }

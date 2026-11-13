@@ -4,6 +4,7 @@ import com.testSpring.store.entities.Result;
 import com.testSpring.store.entities.Sample;
 import com.testSpring.store.repositories.ResultRepository;
 import com.testSpring.store.repositories.SampleRepository;
+import com.testSpring.store.exceptions.ResourceNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -39,7 +40,7 @@ class ResultServicesTest {
     @Test
     void updateMissingResultFailsClearly() {
         when(repository.existsById(4)).thenReturn(false);
-        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+        org.junit.jupiter.api.Assertions.assertThrows(ResourceNotFoundException.class,
                 () -> service.updateResult(new Result(), 4));
         verify(repository, never()).save(any());
     }
@@ -52,7 +53,7 @@ class ResultServicesTest {
         result.setSample(sample);
         when(samples.findById(9)).thenReturn(Optional.empty());
 
-        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+        org.junit.jupiter.api.Assertions.assertThrows(ResourceNotFoundException.class,
                 () -> service.addResult(result));
         verify(repository, never()).save(any());
     }

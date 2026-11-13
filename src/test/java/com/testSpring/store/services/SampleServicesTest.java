@@ -3,6 +3,7 @@ package com.testSpring.store.services;
 import com.testSpring.store.entities.Sample;
 import com.testSpring.store.entities.Status;
 import com.testSpring.store.entities.LimsUser;
+import com.testSpring.store.entities.Role;
 import com.testSpring.store.repositories.LimsUserRepository;
 import com.testSpring.store.repositories.SampleRepository;
 import com.testSpring.store.repositories.SampleStatusHistoryRepository;
@@ -54,6 +55,7 @@ class SampleServicesTest {
         existing.setActive(false);
         existing.setCreatedBy(42);
         existing.setDateReception(LocalDate.of(2026, 1, 2));
+        existing.setVersion(3L);
         existing.setStatus(status(1, "PENDING", "Pendiente"));
         existing.setState("Pendiente");
         when(samples.findById(7)).thenReturn(Optional.of(existing));
@@ -65,6 +67,7 @@ class SampleServicesTest {
         changes.setCreatedBy(999);
         changes.setDateReception(LocalDate.of(2030, 1, 1));
         changes.setState("COMPLETED");
+        changes.setVersion(3L);
         service.updateSample(changes, 7);
 
         assertEquals("S-updated", existing.getSampleCode());
@@ -98,14 +101,15 @@ class SampleServicesTest {
     @Test
     void advancingMissingSampleFails() {
         when(samples.findById(99)).thenReturn(Optional.empty());
-        assertThrows(IllegalArgumentException.class, () -> service.advanceSampleStatus(99));
+        assertThrows(com.testSpring.store.exceptions.ResourceNotFoundException.class,
+                () -> service.advanceSampleStatus(99));
     }
 
     @Test
     void assignmentRequiresAnActiveTechnician() {
         Sample sample = new Sample();
         LimsUser technician = new LimsUser();
-        technician.setRole("TECHNICIAN");
+        technician.setRole(Role.TECHNICIAN);
         technician.setActive(true);
         when(samples.findById(7)).thenReturn(Optional.of(sample));
         when(users.findById(12)).thenReturn(Optional.of(technician));
@@ -122,7 +126,7 @@ class SampleServicesTest {
     @Test
     void oneTechnicianCanBeAssignedToMoreThanOneSample() {
         LimsUser technician = new LimsUser();
-        technician.setRole("TECNICO");
+        technician.setRole(Role.TECNICO);
         technician.setActive(true);
         Sample first = new Sample();
         Sample second = new Sample();

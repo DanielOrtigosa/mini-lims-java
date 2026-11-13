@@ -3,6 +3,7 @@ package com.testSpring.store.services;
 import com.testSpring.store.entities.Status;
 import com.testSpring.store.repositories.StatusRepository;
 import com.testSpring.store.repositories.SampleRepository;
+import com.testSpring.store.exceptions.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -30,7 +31,7 @@ public class StatusServices {
     }
     public void addStatus(Status status) { this.statusRepository.save(status); }
     public void updateStatus(Status status, int id) {
-        if (!statusRepository.existsById(id)) throw new IllegalArgumentException("No existe el estado " + id);
+        if (!statusRepository.existsById(id)) throw new ResourceNotFoundException("No existe el estado " + id);
         status.setId(id);
         this.statusRepository.save(status);
     }

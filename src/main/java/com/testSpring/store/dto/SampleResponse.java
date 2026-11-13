@@ -14,7 +14,8 @@ public record SampleResponse(
                 : new StatusSummary(sample.getStatus().getId(), sample.getStatus().getName(), sample.getStatus().getCode());
         var technician = sample.getTechnician() == null ? null
                 : new TechnicianSummary(sample.getTechnician().getID(), sample.getTechnician().getName(),
-                sample.getTechnician().getEmail(), sample.getTechnician().getRole());
+                sample.getTechnician().getEmail(), sample.getTechnician().getRole() == null
+                ? null : sample.getTechnician().getRole().name());
         return new SampleResponse(sample.getId(), sample.getSampleCode(), sample.getType(), sample.getDescription(),
                 sample.getState(), sample.getCreatedBy(), sample.getDateReception(), sample.getDateCreation(),
                 sample.getDateModified(), sample.isActive(), sample.getVersion(), status, technician);

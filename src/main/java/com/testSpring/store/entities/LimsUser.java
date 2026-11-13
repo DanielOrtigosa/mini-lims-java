@@ -6,6 +6,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
@@ -16,7 +18,8 @@ public class LimsUser {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int ID;
     private String name;
-    private String role;
+    @Enumerated(EnumType.STRING)
+    private Role role;
     private String department;
     private String location;
     private boolean active;
@@ -40,10 +43,10 @@ public class LimsUser {
         this.name = name;
     }
 
-    public String getRole() {
+    public Role getRole() {
         return role;
     }
-    public void setRole(String role) {
+    public void setRole(Role role) {
         this.role = role;
     }
 

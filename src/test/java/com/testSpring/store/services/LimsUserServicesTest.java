@@ -81,7 +81,7 @@ class LimsUserServicesTest {
         technician.setActive(true);
         when(repository.findById(12)).thenReturn(java.util.Optional.of(technician));
 
-        service.deleteUser(12);
+        service.deactivateUser(12);
 
         assertEquals(false, technician.isActive());
         verify(repository).save(technician);

@@ -7,5 +7,4 @@ public record SampleRequest(
         @NotBlank String sampleCode,
         @NotBlank String type,
         String description,
-        Long version,
         LocalDate dateReception) { }

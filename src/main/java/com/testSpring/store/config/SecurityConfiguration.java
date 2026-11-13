@@ -52,9 +52,7 @@ public class SecurityConfiguration {
                 throw new UsernameNotFoundException("Usuario no encontrado");
             }
 
-            String role = user.getRole() == null || user.getRole().isBlank()
-                    ? "USER"
-                    : user.getRole().toUpperCase();
+            String role = user.getRole() == null ? "USER" : user.getRole().name();
             if (!role.startsWith("ROLE_")) {
                 role = "ROLE_" + role;
             }

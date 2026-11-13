@@ -1,6 +1,7 @@
 package com.testSpring.store.config;
 
 import com.testSpring.store.entities.LimsUser;
+import com.testSpring.store.entities.Role;
 import com.testSpring.store.repositories.LimsUserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.CommandLineRunner;
@@ -25,7 +26,7 @@ class InitialAdminConfigurationTest {
 
         var saved = org.mockito.ArgumentCaptor.forClass(LimsUser.class);
         verify(users).save(saved.capture());
-        assertEquals("ADMIN", saved.getValue().getRole());
+        assertEquals(Role.ADMIN, saved.getValue().getRole());
         assertEquals("encoded-password", saved.getValue().getPassword());
         verify(users, never()).save(argThat(user -> "plain-password".equals(user.getPassword())));
     }

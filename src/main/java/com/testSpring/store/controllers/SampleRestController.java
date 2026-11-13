@@ -2,6 +2,7 @@ package com.testSpring.store.controllers;
 
 import com.testSpring.store.entities.Sample;
 import com.testSpring.store.dto.SampleRequest;
+import com.testSpring.store.dto.SampleUpdateRequest;
 import com.testSpring.store.dto.SampleResponse;
 import com.testSpring.store.dto.ActivationRequest;
 import com.testSpring.store.services.SampleServices;
@@ -62,7 +63,7 @@ public class SampleRestController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Void> updateSample(@PathVariable int id, @Valid @RequestBody SampleRequest request) {
+    public ResponseEntity<Void> updateSample(@PathVariable int id, @Valid @RequestBody SampleUpdateRequest request) {
         if (id <= 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El id debe ser mayor que cero");
         Sample sample = new Sample();
         sample.setSampleCode(request.sampleCode());

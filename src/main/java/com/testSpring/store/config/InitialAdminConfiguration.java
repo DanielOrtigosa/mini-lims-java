@@ -1,6 +1,7 @@
 package com.testSpring.store.config;
 
 import com.testSpring.store.entities.LimsUser;
+import com.testSpring.store.entities.Role;
 import com.testSpring.store.repositories.LimsUserRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
@@ -27,7 +28,7 @@ public class InitialAdminConfiguration {
             LimsUser admin = new LimsUser();
             admin.setName("Administrator");
             admin.setEmail(email);
-            admin.setRole("ADMIN");
+            admin.setRole(Role.ADMIN);
             admin.setActive(true);
 
             // Guarda la contraseña cifrada con BCrypt.

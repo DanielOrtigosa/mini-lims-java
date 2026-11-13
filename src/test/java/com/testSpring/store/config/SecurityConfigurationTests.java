@@ -3,6 +3,7 @@ package com.testSpring.store.config;
 import tools.jackson.databind.ObjectMapper;
 import com.testSpring.store.entities.LimsUser;
 import com.testSpring.store.entities.Sample;
+import com.testSpring.store.entities.Role;
 import com.testSpring.store.repositories.LimsUserRepository;
 import com.testSpring.store.repositories.SampleRepository;
 import com.testSpring.store.services.SampleServices;
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -22,6 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
+@ActiveProfiles("test")
 @AutoConfigureMockMvc
 class SecurityConfigurationTests {
 
@@ -169,7 +172,7 @@ class SecurityConfigurationTests {
         LimsUser technician = new LimsUser();
         technician.setName("Assigned technician");
         technician.setEmail("assigned-tech@example.com");
-        technician.setRole("TECHNICIAN");
+        technician.setRole(Role.TECHNICIAN);
         technician.setActive(true);
         technician.setPassword(passwordEncoder.encode("private-password"));
         technician = users.save(technician);
@@ -192,7 +195,7 @@ class SecurityConfigurationTests {
         LimsUser user = new LimsUser();
         user.setName("Test technician");
         user.setEmail("security-test@example.com");
-        user.setRole("TECHNICIAN");
+        user.setRole(Role.TECHNICIAN);
         user.setActive(true);
         user.setPassword(passwordEncoder.encode("test-password"));
         users.save(user);
@@ -245,7 +248,7 @@ class SecurityConfigurationTests {
                         .put("/api/users/{id}", technicianId)
                         .with(jwt().authorities(() -> "ROLE_ADMIN"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"Renamed technician\",\"email\":\"changed@example.com\"}"))
+                        .content("{\"name\":\"Renamed technician\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value(email))
                 .andExpect(jsonPath("$.active").value(true));
@@ -281,7 +284,7 @@ class SecurityConfigurationTests {
         LimsUser user = new LimsUser();
         user.setName("Audit technician");
         user.setEmail(email);
-        user.setRole("TECHNICIAN");
+        user.setRole(Role.TECHNICIAN);
         user.setActive(true);
         user.setPassword(passwordEncoder.encode("audit-password"));
         user = users.save(user);

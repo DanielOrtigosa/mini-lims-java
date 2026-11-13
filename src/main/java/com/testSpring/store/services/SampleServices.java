@@ -3,10 +3,12 @@ package com.testSpring.store.services;
 import com.testSpring.store.entities.Sample;
 import com.testSpring.store.entities.SampleStatusHistory;
 import com.testSpring.store.entities.Status;
+import com.testSpring.store.entities.Role;
 import com.testSpring.store.repositories.SampleRepository;
 import com.testSpring.store.repositories.SampleStatusHistoryRepository;
 import com.testSpring.store.repositories.StatusRepository;
 import com.testSpring.store.repositories.LimsUserRepository;
+import com.testSpring.store.exceptions.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -70,7 +72,7 @@ public class SampleServices {
     @Transactional
     public Sample advanceSampleStatus(int id, String changedBy) {
         Sample sample = sampleRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("No existe la muestra " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("No existe la muestra " + id));
         if (sample.getStatus() == null || sample.getStatus().getCode() == null) {
             throw new IllegalStateException("La muestra no tiene un estado válido");
         }
@@ -104,7 +106,7 @@ public class SampleServices {
 
     public List<SampleStatusHistory> getSampleStatusHistory(int sampleId) {
         if (!sampleRepository.existsById(sampleId)) {
-            throw new IllegalArgumentException("No existe la muestra " + sampleId);
+            throw new ResourceNotFoundException("No existe la muestra " + sampleId);
         }
         return historyRepository.findBySample_IdOrderByChangedAtAsc(sampleId);
     }
@@ -120,8 +122,11 @@ public class SampleServices {
 
     public void updateSample(Sample sample, int id) {
         Sample current = sampleRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("No existe la muestra " + id));
-        if (sample.getVersion() != null && !sample.getVersion().equals(current.getVersion())) {
+                .orElseThrow(() -> new ResourceNotFoundException("No existe la muestra " + id));
+        if (sample.getVersion() == null) {
+            throw new IllegalArgumentException("La versión de la muestra es obligatoria");
+        }
+        if (!sample.getVersion().equals(current.getVersion())) {
             throw new org.springframework.orm.ObjectOptimisticLockingFailureException(Sample.class, id);
         }
         if (sample.getSampleCode() != null) current.setSampleCode(sample.getSampleCode());
@@ -135,13 +140,11 @@ public class SampleServices {
     @Transactional
     public Sample assignTechnician(int sampleId, int technicianId) {
         Sample sample = sampleRepository.findById(sampleId)
-                .orElseThrow(() -> new IllegalArgumentException("No existe la muestra " + sampleId));
+                .orElseThrow(() -> new ResourceNotFoundException("No existe la muestra " + sampleId));
         com.testSpring.store.entities.LimsUser technician = limsUserRepository.findById(technicianId)
-                .orElseThrow(() -> new IllegalArgumentException("No existe el técnico " + technicianId));
-        String role = technician.getRole() == null ? "" : technician.getRole().trim().toUpperCase();
-        if (role.startsWith("ROLE_")) role = role.substring("ROLE_".length());
+                .orElseThrow(() -> new ResourceNotFoundException("No existe el técnico " + technicianId));
         if (!technician.isActive()) throw new IllegalStateException("El técnico está inactivo");
-        if (!role.equals("TECHNICIAN") && !role.equals("TECNICO")) {
+        if (technician.getRole() != Role.TECHNICIAN && technician.getRole() != Role.TECNICO) {
             throw new IllegalStateException("El usuario indicado no tiene rol de técnico");
         }
         sample.setTechnician(technician);

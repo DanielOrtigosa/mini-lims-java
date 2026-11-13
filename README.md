@@ -83,7 +83,7 @@ Para usar una clave JWT propia, configura también `JWT_SECRET` con una cadena B
 $env:JWT_SECRET = "<clave-base64-de-al-menos-32-bytes>"
 ```
 
-Configura `JWT_SECRET` con una cadena Base64 que represente al menos 32 bytes (puedes generarla con `openssl rand -base64 32`). La aplicación no arranca sin ella. No guardes credenciales ni claves reales en el repositorio. La clave aislada de `src/test/resources/application.properties` solo se usa al ejecutar pruebas.
+Configura `JWT_SECRET` con una cadena Base64 que represente al menos 32 bytes (puedes generarla con `openssl rand -base64 32`). La aplicación no arranca sin ella. No guardes credenciales ni claves reales en el repositorio. La clave aislada de `src/test/resources/application-test.properties` solo se usa al ejecutar pruebas.
 
 ## API
 
@@ -171,4 +171,4 @@ El proyecto continúa evolucionando y sirve como práctica de Java, SQL y Spring
 
 Los usuarios se administran en `/api/users`, solo con rol `ADMIN`. `GET /api/users?page=0&size=20` lista usuarios; `POST /api/users` crea un usuario con `name`, `email`, `role`, `password` y, opcionalmente, `department` y `location`; `PUT /api/users/{id}` actualiza el perfil; `PATCH /api/users/{id}/activation` con `{"active": false}` desactiva la cuenta y con `{"active": true}` la reactiva. Desactivar conserva el registro y las asignaciones. Los JWT emitidos antes de la desactivación siguen válidos hasta caducar (una hora).
 
-Los listados de muestras, resultados y estados también aceptan `page` y `size`, por ejemplo `GET /api/samples?page=0&size=5`. Las respuestas de muestras, resultados y usuarios usan DTOs y no incluyen contraseñas ni entidades relacionadas completas.
+Los listados de muestras, resultados y estados también aceptan `page` y `size`, por ejemplo `GET /api/samples?page=0&size=5`. Las respuestas de muestras, resultados y usuarios usan DTOs y no incluyen contraseñas ni entidades relacionadas completas. El `PUT /api/samples/{id}` requiere el campo `version` devuelto por la muestra; una versión ausente devuelve 400 y una desactualizada devuelve 409.

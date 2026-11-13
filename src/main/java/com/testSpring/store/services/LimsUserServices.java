@@ -2,6 +2,7 @@ package com.testSpring.store.services;
 
 import com.testSpring.store.entities.LimsUser;
 import com.testSpring.store.repositories.LimsUserRepository;
+import com.testSpring.store.exceptions.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -42,7 +43,7 @@ public class LimsUserServices {
 
     public void updateUser (LimsUser user, int id){
         LimsUser current = limsUserRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("No existe el usuario " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("No existe el usuario " + id));
         if (user.getName() != null) current.setName(user.getName());
         // Email and activation are identity/security fields and are managed separately.
         if (user.getDepartment() != null) current.setDepartment(user.getDepartment());
@@ -54,7 +55,7 @@ public class LimsUserServices {
         this.limsUserRepository.save(current);
     }
 
-    public void deleteUser(int id){
+    public void deactivateUser(int id){
 
         Optional<LimsUser> user = this.limsUserRepository.findById(id);
         if (user.isPresent()) {

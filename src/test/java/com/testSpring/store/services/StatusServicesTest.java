@@ -2,6 +2,7 @@ package com.testSpring.store.services;
 
 import com.testSpring.store.entities.Status;
 import com.testSpring.store.repositories.StatusRepository;
+import com.testSpring.store.exceptions.ResourceNotFoundException;
 import com.testSpring.store.repositories.SampleRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,7 +31,7 @@ class StatusServicesTest {
     @Test
     void updateOfMissingStatusFails() {
         when(repository.existsById(3)).thenReturn(false);
-        assertThrows(IllegalArgumentException.class, () -> service.updateStatus(new Status(), 3));
+        assertThrows(ResourceNotFoundException.class, () -> service.updateStatus(new Status(), 3));
         verify(repository, never()).save(any());
     }
 
